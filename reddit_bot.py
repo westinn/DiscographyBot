@@ -1,13 +1,81 @@
+# basic networking imports
+from pprint import pprint
+import requests
+import json
+# image handling imports
+import base64
+import urllib
+from io import StringIO
+import Image
+# file handling
+import linecache
 import praw
 import spotipy
-from imgurpython import ImgurClient
-import time
 
-r = praw.Reddit(user_agent="DiscographyBot by /u/Brozilean")
-# r.login(disable_warning=True)
-# imgur = ImgurClient
+# reddit data
+redditUser = linecache.getline('bot_data.txt', 0)
+redditPass = linecache.getline('bot_data.txt', 1)
+r = praw.Reddit()
+rClient = reddit_login()
+
+
+# followed
+# http://blog.tankorsmash.com/?p=295
+def reddit_login():
+    # create dict with username and password
+    user_pass_dict = {'user': redditUser, 'passwd': redditPass, 'api_type': 'json'}
+    # set the header for all the following requests
+    headers = {'user-agent': "DiscographyBot by /u/Brozilean"}
+
+    # create a requests.session that'll handle our cookies for us
+    client = requests.session()
+    client.headers = headers
+
+    # make a login request, passing in the user and pass as data
+    post = client.post(r'http://www.reddit.com/api/login', data=user_pass_dict)
+
+    # optional print to confirm error-free response
+    # pprint(r.content)
+
+    # turns the response's JSON to a native python dict
+    j = json.loads(post.content)
+
+    # grabs the modhash from the response
+    client.modhash = j['json']['data']['modhash']
+
+    # prints the users modhash
+    # print('{USER}\'s modhash is: {mh}'.format(USER=username, mh=client.modhash))
+    client.user = redditUser
+    return client
+
+
+# followed
+# http://blog.tankorsmash.com/?p=249
+def image_upload(spImgUrl, name):
+    # image processing aka grab URL, read data, rencode binary data, upload b64image
+    file = StringIO(urllib.urlopen(spImgUrl).read())
+    img = open(file, 'rb')
+    binary_data = img.read()
+    b64image = base64.b64encode(binary_data)
+    payload = {'key': iKey,
+               'image': b64image,
+               'title': name}
+    # make the POST request, with the attached data of payload
+    post = requests.post(iUpload, data=payload)
+    # turn the returned jso0n into a python dict
+    j = json.loads(r.text)
+    finalImage = j['upload']['links']['imgur_page']
+    return finalImage
+
+
+# imgur data
+iKey = linecache.getline('bot_data.txt', 2)[4:]
+iUpload = r'http://api.imgur.com/2/upload.json'
+
+# spotify data
 sp = spotipy.Spotify()
 
+# bot data
 words_to_match = ["!discobot"]
 cache = []
 
@@ -42,10 +110,12 @@ def comment_formatter(albums):
     comment = "Title | Album Artwork\n" + ":--|:--:\n"
     for album in albums:
         if len(album['images']) > 0:
+            img = image_upload(album['images'][0], album['name'])
+
             albumItem = "[{name:s}]( {albumURL:s} ) | [Artwork Link]( {image:s} )\n".format(
                 name=album['name'],
                 albumURL=album['external_urls']['spotify'],
-                image=album['images'])
+                image=img)
         else:
             albumItem = "[{name:s}]( {albumURL:s} ) | No Artwork Available\n".format(
                 name=album['name'],
