@@ -1,11 +1,8 @@
-# basic networking imports
-import json
-import requests
 # file handling
 import linecache
 # image handling imports
-import base64
 import urllib.request
+import pyimgur
 # reddit imports
 import praw
 import OAuth2Util
@@ -18,8 +15,8 @@ o = OAuth2Util.OAuth2Util(r, server_mode=True)
 o.refresh(force=True)
 
 # imgur data
-iKey = linecache.getline('bot_data.txt', 0)[6:]
-iUpload = r'http://api.imgur.com/2/upload.json'
+iKey = str(linecache.getline('bot_data.txt', 1))[:-1]
+im = pyimgur.Imgur(iKey)
 
 # spotify data
 sp = spotipy.Spotify()
@@ -32,24 +29,13 @@ cache = []
 # =================================================================================================
 # Imgur
 
-# followed
-# http://blog.tankorsmash.com/?p=249
-def image_upload(spImgUrl, name):
-    # image processing aka grab URL, read data, rencode binary data, upload b64image
+# Upload an album cover to imgur
+# Could've left it with the spotify link, but doesn't work as well with RES Extension
+def image_upload(spImgUrl, albumName):
     image_path = "temp_art.png"
     urllib.request.urlretrieve(spImgUrl, image_path)
-    img = open(image_path, 'rb')
-    binary_data = img.read()
-    b64image = base64.b64encode(binary_data)
-    payload = {'key': iKey,
-               'image': b64image,
-               'title': name}
-    # make the POST request, with the attached data of payload
-    post = requests.post(iUpload, data=payload)
-    # turn the returned jso0n into a python dict
-    j = json.loads(post.text)
-    finalImage = j['upload']['links']['imgur_page']
-    return finalImage
+    uploaded_image = im.upload_image(image_path, title=albumName)
+    return uploaded_image
 
 
 # =================================================================================================
@@ -93,6 +79,7 @@ def comment_formatter(artistName, albums):
     for album in albums:
         if len(album['images']) > 0:
             img = image_upload(album['images'][0]['url'], album['name'])
+            img = img.link
             albumItem = "[{name:s}]( {albumURL:s} ) | [Artwork Link]( {image:s} )\n".format(
                 name=album['name'],
                 albumURL=album['external_urls']['spotify'],
@@ -102,14 +89,14 @@ def comment_formatter(artistName, albums):
                 name=album['name'],
                 albumURL=album['external_urls']['spotify'])
         comment += albumItem
-    head = "*Here's the discography for:*\n**" + artistName + "**\n"
-    tail = "\n\nI am a bot. You can provide feedback in my subreddit: /r/DiscographyBot."
-    finalComment = head + comment + tail
+    head = "*Here's the discography for:*\n\n**" + artistName + "**\n\n"
+    tail = "\n\n*I am a bot. You can provide feedback in my subreddit: /r/DiscographyBot.*"
+    finalComment = str(head + comment + tail)
     return finalComment
 
 
 def get_comment(artist):
-    find_albums(find_artist(artist))
+    return find_albums(find_artist(artist))
 
 
 # =================================================================================================
@@ -118,7 +105,7 @@ def get_comment(artist):
 
 def run_bot():
     o.refresh()
-    subreddit = r.get_subreddit("brozilean")
+    subreddit = r.get_subreddit("music")
     comments = praw.helpers.comment_stream(r, subreddit, limit=None)
     for comment in comments:
         comment_text = comment.body.lower()
