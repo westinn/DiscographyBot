@@ -1,0 +1,5 @@
+praw==3.5.0
+praw-oauth2util==0.3.4
+pyimgur==0.5.3
+requests==2.10.0
+spotipy==2.3.8
