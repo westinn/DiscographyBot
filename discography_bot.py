@@ -8,6 +8,7 @@ import praw
 import OAuth2Util
 # spotify imports
 import spotipy
+import os
 
 # reddit data
 r = praw.Reddit("DiscographyBot by /u/Brozilean")
@@ -15,9 +16,10 @@ o = OAuth2Util.OAuth2Util(r, server_mode=True)
 o.refresh(force=True)
 
 # imgur data
-iKey = str(linecache.getline('bot_data.txt', 1))[:-1]
-im = pyimgur.Imgur(iKey)
-
+# iKey = str(linecache.getline('bot_data.txt', 1))[:-1]
+# Retrieve heroku env variables
+ik = [os.environ['iKey']]
+im = pyimgur.Imgur(ik)
 # spotify data
 sp = spotipy.Spotify()
 
