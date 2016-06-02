@@ -107,7 +107,7 @@ def get_comment(artist):
 
 def run_bot():
     o.refresh()
-    subreddit = r.get_subreddit("music")
+    subreddit = r.get_subreddit("music+test")
     comments = praw.helpers.comment_stream(r, subreddit, limit=None)
     for comment in comments:
         comment_text = comment.body.lower()
